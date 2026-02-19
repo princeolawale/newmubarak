@@ -393,6 +393,18 @@ body{background:var(--bg);color:var(--cream);font-family:'Outfit',sans-serif;fon
       <p class="login-eyebrow-ar">حَلْقَةُ الْعُلَمَاء تَنْتَظِرُكَ</p>
       <input class="field" id="name-in" type="text" placeholder="Your name / اسمك" maxlength="30" autocomplete="off">
       <button class="btn-main" onclick="onEnter()">ENTER THE CIRCLE &nbsp;·&nbsp; ادخل</button>
+
+      <div class="landing-ca">
+        <span class="ca-label">CA:</span>
+        <span id="token-ca-full" class="ca-text">
+          7GhT92xxxxxxxxxxxxxxxxxxxxpump
+        </span>
+        <span class="ca-short">
+          7GhT92...pump
+        </span>
+        <button class="ca-copy" onclick="copyLandingCA()">📋</button>
+      </div>
+      
     </div>
   </div>
 
@@ -1209,6 +1221,13 @@ function doCopy(txt,id){
   navigator.clipboard.writeText(txt).then(()=>{
     const b=document.getElementById(id);b.textContent='✓';b.classList.add('ok');
     setTimeout(()=>{b.textContent='Copy';b.classList.remove('ok');},2000);
+  });
+}
+function copyLandingCA() {
+  const fullCA = document.getElementById("token-ca-full").textContent;
+
+  navigator.clipboard.writeText(fullCA).then(() => {
+    showToast("CA copied to clipboard 🚀");
   });
 }
 </script>
