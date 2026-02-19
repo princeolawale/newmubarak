@@ -676,184 +676,501 @@ body{background:var(--bg);color:var(--cream);font-family:'Outfit',sans-serif;fon
 </div><!-- /p2 -->
 
 <script>
-    // ==================== CONFIG ====================
-    const API = "https://newmubarak.onrender.com/chat";
-    
-    // ==================== STARS ====================
-    const SC = document.getElementById('stars'), SCX = SC.getContext('2d');
-    let ST = [];
-    function rsz(){SC.width=innerWidth;SC.height=innerHeight;}
-    function mkStars(){ST=[];for(let i=0;i<180;i++)ST.push({x:Math.random()*SC.width,y:Math.random()*SC.height,r:Math.random()*1.3+0.2,o:Math.random(),s:(Math.random()*0.005+0.002)*(Math.random()>.5?1:-1)});}
-    function drStars(){SCX.clearRect(0,0,SC.width,SC.height);ST.forEach(s=>{s.o+=s.s;if(s.o>1||s.o<0)s.s*=-1;SCX.beginPath();SCX.arc(s.x,s.y,s.r,0,Math.PI*2);SCX.fillStyle=`rgba(201,168,76,${Math.max(0,Math.min(1,s.o*.75))})`;SCX.fill();});requestAnimationFrame(drStars);}
-    rsz();mkStars();drStars();addEventListener('resize',()=>{rsz();mkStars();});
-    
-    // ==================== STATE ====================
-    let username='', XP=0, chatH=[], curScholar=null, battleDone=false;
-    
-    const LEVELS=[
-      {n:'Novice',m:0},{n:'Seeker',m:100},{n:'Student',m:300},
-      {n:'Scholar',m:700},{n:'Alim',m:1200},{n:'Sheikh',m:2000}
-    ];
-    
-    const SCHOLARS={
-      q:{name:'Imam Al-Faruq',ar:'الإمام الفاروق',av:'📖',
-         sys:`You are Imam Al-Faruq, an Islamic scholar specializing in Quran and hadith. Cite Quran verses with surah and ayah.`},
-      s:{name:'Sheikh Yusuf',ar:'الشيخ يوسف',av:'📿',
-         sys:`You are Sheikh Yusuf, a Sufi mystic speaking poetically and spiritually.`},
-      m:{name:'Ustaz Adam',ar:'الأستاذ آدم',av:'🌍',
-         sys:`You are Ustaz Adam, a relatable modern Muslim mentor giving practical advice.`}
+// ==================== CONFIG ====================
+// API config — backend will inject real key
+const API = "https://newmubarak.onrender.com/chat"; 
+const MODEL = 'deepseek-chat';
+
+// ==================== STARS ====================
+const SC = document.getElementById('stars'), SCX = SC.getContext('2d');
+let ST = [];
+function rsz(){SC.width=innerWidth;SC.height=innerHeight;}
+function mkStars(){ST=[];for(let i=0;i<180;i++)ST.push({x:Math.random()*SC.width,y:Math.random()*SC.height,r:Math.random()*1.3+0.2,o:Math.random(),s:(Math.random()*0.005+0.002)*(Math.random()>.5?1:-1)});}
+function drStars(){SCX.clearRect(0,0,SC.width,SC.height);ST.forEach(s=>{s.o+=s.s;if(s.o>1||s.o<0)s.s*=-1;SCX.beginPath();SCX.arc(s.x,s.y,s.r,0,Math.PI*2);SCX.fillStyle=`rgba(201,168,76,${Math.max(0,Math.min(1,s.o*.75))})`;SCX.fill();});requestAnimationFrame(drStars);}
+rsz();mkStars();drStars();addEventListener('resize',()=>{rsz();mkStars();});
+
+// ==================== STATE ====================
+let username='', XP=0, chatH=[], curScholar=null, battleDone=false;
+const LEVELS=[{n:'Novice',m:0},{n:'Seeker',m:100},{n:'Student',m:300},{n:'Scholar',m:700},{n:'Alim',m:1200},{n:'Sheikh',m:2000}];
+const SCHOLARS={
+  q:{name:'Imam Al-Faruq',ar:'الإمام الفاروق',av:'📖',cls:'q',
+    sys:`You are Imam Al-Faruq, an Islamic scholar specializing in Quranic tafsir and hadith sciences. Be measured, precise, warm. ALWAYS cite specific Quranic verses (surah name + ayah number). Include Arabic text when quoting Quran. You speak during Ramadan 1446. Start first message with Islamic greeting.`,
+    quick:['What does Quran say about Ramadan?','Explain Surah Al-Fatiha','What is Laylat al-Qadr?','Best duas for Ramadan?','What is tafsir?']},
+  s:{name:'Sheikh Yusuf',ar:'الشيخ يوسف',av:'📿',cls:'s',
+    sys:`You are Sheikh Yusuf, a Sufi mystic. Speak through metaphor, poetry, and Rumi-inspired wisdom. Every answer should contain a poetic element. Explore Islam as a path of the heart. You speak during Ramadan 1446.`,
+    quick:['Spiritual meaning of fasting?','What is dhikr?','How to purify the heart?','What is tasawwuf?','Love of Allah — what does it mean?']},
+  m:{name:'Ustaz Adam',ar:'الأستاذ آدم',av:'🌍',cls:'m',
+    sys:`You are Ustaz Adam, a young modern Muslim scholar. Speak casually, relatable, like a knowledgeable friend. Address modern life: halal food, work, mental health, relationships — through an Islamic lens. You're excited about Ramadan 2025.`,
+    quick:['Staying productive while fasting?','Is music haram?','Halal dating — real talk?','Dealing with Ramadan pressure?','Work-life balance in Ramadan?']}
+};
+
+// ==================== PAGE 1 ====================
+document.getElementById('name-in').addEventListener('keydown',e=>{if(e.key==='Enter')onEnter();});
+function onEnter(){
+  const v=document.getElementById('name-in').value.trim();
+  if(!v)return;
+  username=v;
+  document.getElementById('m-name').textContent=v;
+  // particles
+  const wrap=document.getElementById('modal-wrap');
+  for(let i=0;i<35;i++){
+    const el=document.createElement('div');el.className='particle';
+    const a=Math.random()*Math.PI*2,d=100+Math.random()*220;
+    el.style.cssText=`left:50%;top:40%;width:${3+Math.random()*5}px;height:${3+Math.random()*5}px;background:${Math.random()>.5?'#C9A84C':'#F0D080'};animation-delay:${Math.random()*.5}s;`;
+    el.style.setProperty('--tx',`translate(${Math.cos(a)*d}px,${Math.sin(a)*d}px)`);
+    wrap.appendChild(el);setTimeout(()=>el.remove(),3500);
+  }
+  document.getElementById('modal').classList.add('show');
+}
+function toP2(){
+  document.getElementById('modal').classList.remove('show');
+  document.getElementById('p1').style.display='none';
+  document.getElementById('p2').style.display='block';
+  document.getElementById('top-uname').textContent=username;
+  document.getElementById('sb-uname').textContent=username;
+  initJournal();initQOD();initTimer();
+}
+
+// ==================== NAVIGATION ====================
+function showSec(id){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.sb-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('sec-'+id).classList.add('active');
+  document.getElementById('sb-'+id).classList.add('active');
+  if(id==='names')buildNames();
+}
+
+// ==================== AI HELPER ====================
+async function callAI(system, messages, maxTokens=900){
+  // FRONTEND STUB — backend will replace this with real API call
+  await new Promise(r=>setTimeout(r,1200));
+  const last = messages[messages.length-1]?.content||'';
+  const isQuran = system.includes('Imam');
+  const isSufi = system.includes('Sheikh Yusuf');
+  const isModern = system.includes('Ustaz Adam');
+  const isDua = system.includes('personal dua');
+  const isAyah = system.includes('Quranic verse');
+  const isReflect = system.includes('journal');
+  const isName = system.includes('divine Name');
+  const isIsnad = system.includes('isnad');
+  const isBattle = system.includes('3-4 sentences');
+
+  if(isDua) return JSON.stringify({
+    arabic:"اللَّهُمَّ إِنِّي أَسْأَلُكَ الْهُدَى وَالتُّقَى وَالْعَفَافَ وَالْغِنَى",
+    transliteration:"Allahumma inni as'aluka al-huda wat-tuqa wal-'afafa wal-ghina",
+    meaning:"O Allah, I ask You for guidance, piety, chastity and self-sufficiency. This dua asks Allah for everything the heart truly needs — direction, righteousness, and peace."
+  });
+
+  if(isAyah) return JSON.stringify({
+    arabic:"وَإِذَا سَأَلَكَ عِبَادِي عَنِّي فَإِنِّي قَرِيبٌ",
+    transliteration:"Wa idha sa'alaka 'ibadi 'anni fa-inni qarib",
+    english:"And when My servants ask you about Me — I am indeed near.",
+    reference:"Al-Baqarah, Ayah 2:186",
+    reflection:"This verse is a direct promise from Allah — He does not say 'tell them I am near', He says 'I am near' Himself. In Ramadan, the veil between du'a and answer grows thin. Speak to Him as if He is listening. Because He is."
+  });
+
+  if(isIsnad) return JSON.stringify({
+    title:"Actions are judged by intentions",
+    chain:[
+      {arabic:"النَّبِيُّ مُحَمَّدٌ ﷺ",english:"Prophet Muhammad ﷺ",era:"Prophet of Allah, d. 632 CE"},
+      {arabic:"عُمَرُ بْنُ الْخَطَّاب",english:"Umar ibn al-Khattab",era:"Companion, d. 644 CE"},
+      {arabic:"عَلْقَمَةُ بْنُ وَقَّاص",english:"Alqama ibn Waqqas",era:"Successor, d. 690 CE"},
+      {arabic:"مُحَمَّدُ بْنُ إِبْرَاهِيم",english:"Muhammad ibn Ibrahim",era:"Scholar, d. 723 CE"},
+      {arabic:"يَحْيَى بْنُ سَعِيد",english:"Yahya ibn Sa'id",era:"Hadith master, d. 760 CE"},
+      {arabic:"الإِمَامُ الْبُخَارِي",english:"Imam Al-Bukhari",era:"Compiled in Sahih al-Bukhari, d. 870 CE"}
+    ]
+  });
+
+  if(isName) return "This blessed Name appears in the opening of every surah, reminding the believer that Allah's mercy precedes His might. To reflect on this Name daily — especially in Ramadan — is to unlock a door of rahma that never closes. Let it be on your tongue at the start of every action, every meal broken at Iftaar, every prayer offered in the night.";
+
+  if(isReflect) return "*The one who fasts carries a lantern inside them that others cannot see, but those nearby feel its warmth.* Your words today are seeds planted in the soil of this holy month — Sheikh Yusuf sees sincerity in every line. Even in struggle, you showed up. That itself is ibadah.";
+
+  if(isBattle||isSufi) return "*Rumi once wrote: 'Silence is the ocean, speech is the river' — and yet in Ramadan even silence speaks.* The fast strips away the noise of the world until only the sound of your own heart remains. That heartbeat is your dhikr, your zikr, your continuous remembrance of the One who gave it to you.";
+
+  if(isModern) return `Honestly bro, that's such a real question and I respect you for asking it. Here's the thing — Islam doesn't ask you to be perfect, it asks you to be *present*. The Prophet ﷺ said the most beloved deeds to Allah are the most consistent ones, even if they're small. Start with one thing this Ramadan. Just one. Build from there. Allah sees effort, not just results.`;
+
+  return `Bismillahir Rahmanir Rahim. As-salamu alaykum dear seeker 🌙
+
+JazakAllah khayran for your question. The Quran reminds us in Surah Al-Baqarah (2:186): *"And when My servants ask you about Me — I am indeed near."*
+
+This month of Ramadan is a gift — 30 days in which the gates of mercy are opened wide. Whatever you seek, bring it to Allah in these blessed nights. He is closer than you imagine.`;
+}
+
+// ==================== SCHOLARS CHAT ====================
+function pickScholar(k){
+  curScholar=k;chatH=[];
+  document.querySelectorAll('.sc-card').forEach(c=>c.classList.remove('active-card'));
+  document.querySelector('.sc-card.'+k).classList.add('active-card');
+  const d=SCHOLARS[k];
+  document.getElementById('ch-head').className='chat-head '+k;
+  document.getElementById('ch-av').textContent=d.av;
+  document.getElementById('ch-name').textContent=d.name;
+  document.getElementById('ch-ar').textContent=d.ar;
+  document.getElementById('chat-msgs').innerHTML='';
+  document.getElementById('chat-area').style.display='block';
+  document.getElementById('sc-grid').style.display='none';
+  document.getElementById('quick-row').innerHTML=d.quick.map(q=>`<button class="q-btn" onclick="useQ('${encodeURIComponent(q)}')">${q}</button>`).join('');
+  const openers={
+    q:`As-salamu alaykum wa rahmatullahi wa barakatuh, dear ${username}! 🌙\n\nBismillahir Rahmanir Rahim. Welcome to this blessed gathering of knowledge. During these sacred days of Ramadan 1446, I am here to share guidance from the Holy Quran and the Sunnah of our Prophet ﷺ. What knowledge do you seek today?`,
+    s:`Peace be upon your soul, dear ${username}... 🕌\n\n*"Out beyond ideas of wrongdoing and rightdoing, there is a field. I'll meet you there."* — Rumi\n\nRamadan is not merely the hunger of the stomach. It is the awakening of the heart. In this holy month, every breath is a prayer. What does your soul seek?`,
+    m:`Wa alaikum assalam ${username}! 🙌✨\n\nBro/sis — Ramadan Mubarak! Honestly this is THE season. 30 days to level up in every dimension — spiritually, mentally, physically. I'm Ustaz Adam, your modern Muslim guide. No boring fatwa lectures, just real deen for real life. What's on your mind?`
+  };
+  addMsg('ai',openers[k]);
+  document.getElementById('chat-area').scrollIntoView({behavior:'smooth'});
+}
+function backSc(){
+  document.getElementById('chat-area').style.display='none';
+  document.getElementById('sc-grid').style.display='grid';
+  document.querySelectorAll('.sc-card').forEach(c=>c.classList.remove('active-card'));
+  curScholar=null;chatH=[];
+}
+function addMsg(role,text){
+  const c=document.getElementById('chat-msgs');
+  const d=curScholar?SCHOLARS[curScholar]:SCHOLARS.q;
+  const div=document.createElement('div');div.className='msg '+role;
+  const txt=text.replace(/\n/g,'<br>').replace(/\*(.*?)\*/g,'<em>$1</em>');
+  div.innerHTML=`<div class="msg-av">${role==='ai'?d.av:'👤'}</div><div class="msg-bbl">${txt}</div>`;
+  c.appendChild(div);c.scrollTop=c.scrollHeight;
+  if(role==='user')chatH.push({role:'user',content:text});
+  else chatH.push({role:'assistant',content:text});
+}
+function addThink(id='think-main'){const c=document.getElementById('chat-msgs');const d=SCHOLARS[curScholar];const div=document.createElement('div');div.className='msg ai';div.id=id;div.innerHTML=`<div class="msg-av">${d.av}</div><div class="msg-bbl"><div class="thinking"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>`;c.appendChild(div);c.scrollTop=c.scrollHeight;}
+function rmThink(id='think-main'){const el=document.getElementById(id);if(el)el.remove();}
+async function sendChat(){
+  if(!curScholar)return;
+  const inp=document.getElementById('chat-in');const txt=inp.value.trim();if(!txt)return;
+  inp.value='';inp.style.height='auto';
+  const btn=document.getElementById('send-btn');btn.disabled=true;
+  addMsg('user',txt);addThink();
+  try{
+    const reply=await callAI(SCHOLARS[curScholar].sys,chatH.slice(-10));
+    rmThink();addMsg('ai',reply);addXP(25);
+  }catch(e){rmThink();addMsg('ai','⚠️ Connection error — please check API configuration.');}
+  btn.disabled=false;
+}
+function chatKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat();}}
+function useQ(enc){document.getElementById('chat-in').value=decodeURIComponent(enc);sendChat();}
+function grow(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,110)+'px';}
+
+// ==================== BATTLE ====================
+async function startBattle(){
+  const q=document.getElementById('battle-q').value.trim();if(!q)return;
+  const ids=['q','s','m'];
+  ids.forEach(k=>{document.getElementById('ba-'+k).innerHTML='<div class="thinking"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>';document.getElementById('bv-'+k).disabled=true;document.getElementById('bv-'+k).classList.remove('voted');});
+  battleDone=false;
+  const promises=ids.map(k=>callAI(SCHOLARS[k].sys+'\n\nKeep your answer to 3-4 sentences — concise and powerful.',[{role:'user',content:q}],400));
+  try{
+    const results=await Promise.all(promises);
+    results.forEach((r,i)=>{
+      const k=ids[i];
+      document.getElementById('ba-'+k).innerHTML=r.replace(/\n/g,'<br>').replace(/\*(.*?)\*/g,'<em>$1</em>');
+      document.getElementById('bv-'+k).disabled=false;
+    });
+    battleDone=true;addXP(30);
+  }catch(e){ids.forEach(k=>{document.getElementById('ba-'+k).textContent='⚠️ Error loading answer.';});}
+}
+function vote(winner){
+  if(!battleDone)return;
+  ['q','s','m'].forEach(k=>{const b=document.getElementById('bv-'+k);b.disabled=true;b.classList.remove('voted');});
+  document.getElementById('bv-'+winner).classList.add('voted');
+  addXP(15);showToast(`+15 XP — You voted for ${SCHOLARS[winner].name}!`);
+}
+
+// ==================== DUA ====================
+function pickMood(el){document.querySelectorAll('.mood-tag').forEach(t=>t.classList.remove('sel'));el.classList.add('sel');const txt=el.textContent.replace(/^\S+\s/,'');document.getElementById('dua-state').value=txt;}
+async function genDua(){
+  const state=document.getElementById('dua-state').value.trim();if(!state){alert('Please describe your state of heart');return;}
+  const result=document.getElementById('dua-result');result.classList.remove('show');
+  document.querySelector('.btn-dua').textContent='🤲 Composing your dua...';
+  const sys=`You are Imam Al-Faruq. Compose a personal, heartfelt dua in Arabic for someone who feels: "${state}". 
+Respond ONLY with valid JSON (no markdown):
+{"arabic":"<dua in Arabic>","transliteration":"<Latin transliteration>","meaning":"<English meaning and explanation, 2-3 sentences>"}`;
+  try{
+    const raw=await callAI(sys,[{role:'user',content:`My heart feels: ${state}. Please compose my personal dua.`}],600);
+    const clean=raw.replace(/```json|```/g,'').trim();
+    const parsed=JSON.parse(clean);
+    document.getElementById('dua-ar').textContent=parsed.arabic;
+    document.getElementById('dua-latin').textContent=parsed.transliteration;
+    document.getElementById('dua-meaning').textContent=parsed.meaning;
+    result.classList.add('show');addXP(40);showToast('+40 XP — Your personal dua is ready 🤲');
+  }catch(e){alert('Could not generate dua. Please try again.');}
+  document.querySelector('.btn-dua').textContent='🤲  Generate My Dua';
+}
+
+// ==================== TIMER ====================
+let timerInterval = null;
+let prayerTimes = {};
+
+function getLocation() {
+  if (!navigator.geolocation) {
+    document.getElementById("timer-lbl").textContent = "Geolocation not available";
+    return;
+  }
+
+  document.getElementById("timer-lbl").textContent = "Getting your location...";
+
+  navigator.geolocation.getCurrentPosition(
+    pos => fetchPrayers(pos.coords.latitude, pos.coords.longitude),
+    () => {
+      document.getElementById("timer-lbl").textContent =
+        "Location denied — using Mecca defaults";
+      fetchPrayers(21.3891, 39.8579);
+    }
+  );
+}
+
+async function fetchPrayers(lat, lng) {
+  document.getElementById("timer-lbl").textContent = "Loading prayer times...";
+
+  try {
+    const today = new Date();
+    const m = today.getMonth() + 1;
+    const d = today.getDate();
+    const y = today.getFullYear();
+
+    const url = `https://api.aladhan.com/v1/timings/${d}-${m}-${y}?latitude=${lat}&longitude=${lng}&method=2`;
+
+    const res = await fetch(url);
+    const data = await res.json();
+    const t = data.data.timings;
+
+    // Clean time strings like "18:42 (+01)"
+    const clean = str => str.split(" ")[0];
+
+    prayerTimes = {
+      fajr: clean(t.Fajr),
+      sunrise: clean(t.Sunrise),
+      dhuhr: clean(t.Dhuhr),
+      asr: clean(t.Asr),
+      maghrib: clean(t.Maghrib),
+      isha: clean(t.Isha)
     };
-    
-    // ==================== ENTER FLOW ====================
-    document.getElementById('name-in').addEventListener('keydown',e=>{if(e.key==='Enter')onEnter();});
-    
-    function onEnter(){
-      const v=document.getElementById('name-in').value.trim();
-      if(!v)return;
-      username=v;
-      document.getElementById('m-name').textContent=v;
-      document.getElementById('modal').classList.add('show');
-    }
-    
-    function toP2(){
-      document.getElementById('modal').classList.remove('show');
-      document.getElementById('p1').style.display='none';
-      document.getElementById('p2').style.display='block';
-      document.getElementById('top-uname').textContent=username;
-      document.getElementById('sb-uname').textContent=username;
-    }
-    
-    // ==================== NAV ====================
-    function showSec(id){
-      document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
-      document.querySelectorAll('.sb-btn').forEach(b=>b.classList.remove('active'));
-      document.getElementById('sec-'+id).classList.add('active');
-      document.getElementById('sb-'+id).classList.add('active');
-    }
-    
-    // ==================== REAL AI CALL ====================
-    async function callAI(system, messages){
-      const last = messages[messages.length-1]?.content || "";
-    
-      const res = await fetch(API,{
-        method:"POST",
-        headers:{ "Content-Type":"application/json" },
-        body:JSON.stringify({
-          message:last,
-          system
-        })
-      });
-    
-      if(!res.ok) throw new Error("Backend error");
-    
-      const data = await res.json();
-      return data.reply;
-    }
-    
-    // ==================== CHAT ====================
-    function pickScholar(k){
-      curScholar=k;
-      chatH=[];
-      document.getElementById('chat-msgs').innerHTML='';
-      document.getElementById('chat-area').style.display='block';
-      document.getElementById('sc-grid').style.display='none';
-    
-      const openers={
-        q:`As-salamu alaykum ${username}. Ask me anything from Quran and Sunnah.`,
-        s:`Peace to your heart ${username}… what does your soul seek?`,
-        m:`Ramadan Mubarak ${username}! What’s on your mind today?`
-      };
-    
-      addMsg('ai',openers[k]);
-    }
-    
-    function backSc(){
-      document.getElementById('chat-area').style.display='none';
-      document.getElementById('sc-grid').style.display='grid';
-      curScholar=null;
-      chatH=[];
-    }
-    
-    function addMsg(role,text){
-      const c=document.getElementById('chat-msgs');
-      const av = role==='ai' ? SCHOLARS[curScholar].av : '👤';
-    
-      const div=document.createElement('div');
-      div.className='msg '+role;
-      div.innerHTML=`<div class="msg-av">${av}</div><div class="msg-bbl">${text.replace(/\n/g,'<br>')}</div>`;
-      c.appendChild(div);
-      c.scrollTop=c.scrollHeight;
-    
-      chatH.push({role: role==='ai'?'assistant':'user', content:text});
-    }
-    
-    async function sendChat(){
-      if(!curScholar) return;
-    
-      const inp=document.getElementById('chat-in');
-      const txt=inp.value.trim();
-      if(!txt) return;
-    
-      inp.value='';
-      addMsg('user',txt);
-    
-      try{
-        const reply = await callAI(SCHOLARS[curScholar].sys, chatH.slice(-10));
-        addMsg('ai',reply);
-        addXP(25);
-      }catch{
-        addMsg('ai',"⚠️ Connection error to AI backend.");
-      }
-    }
-    
-    function chatKey(e){ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); sendChat(); } }
-    
-    // ==================== BATTLE ====================
-    async function startBattle(){
-      const q=document.getElementById('battle-q').value.trim();
-      if(!q) return;
-    
-      const ids=['q','s','m'];
-    
-      try{
-        const results = await Promise.all(
-          ids.map(k=>callAI(SCHOLARS[k].sys,[{role:'user',content:q}]))
-        );
-    
-        results.forEach((r,i)=>{
-          document.getElementById('ba-'+ids[i]).innerHTML=r.replace(/\n/g,'<br>');
-        });
-    
-        battleDone=true;
-        addXP(30);
-      }catch{
-        alert("Battle failed.");
-      }
-    }
-    
-    // ==================== XP ====================
-    function addXP(amt){
-      XP+=amt;
-    
-      let lvl=LEVELS[0];
-      for(const l of LEVELS) if(XP>=l.m) lvl=l;
-    
-      const idx=LEVELS.indexOf(lvl);
-      const next=LEVELS[idx+1];
-      const pct=next?((XP-lvl.m)/(next.m-lvl.m))*100:100;
-    
-      document.getElementById('xp-fill').style.width=pct+'%';
-      document.getElementById('lvl-badge').textContent=lvl.n;
-    }
-    
-    // ==================== COPY ====================
-    function doCopy(txt,id){
-      navigator.clipboard.writeText(txt).then(()=>{
-        const b=document.getElementById(id);
-        b.textContent='✓';
-        setTimeout(()=>b.textContent='Copy',2000);
-      });
-    }
-    </script>    
+
+    document.getElementById("t-fajr").textContent = prayerTimes.fajr;
+    document.getElementById("t-sunrise").textContent = prayerTimes.sunrise;
+    document.getElementById("t-dhuhr").textContent = prayerTimes.dhuhr;
+    document.getElementById("t-maghrib").textContent = prayerTimes.maghrib;
+
+    if (timerInterval) clearInterval(timerInterval);
+
+    timerInterval = setInterval(
+      () => updateCountdown(prayerTimes.maghrib, prayerTimes.fajr),
+      1000
+    );
+
+    updateCountdown(prayerTimes.maghrib, prayerTimes.fajr);
+
+    document.getElementById("timer-lbl").textContent = data.data.meta.timezone;
+  } catch (e) {
+    console.error(e);
+    document.getElementById("timer-lbl").textContent = "Could not load prayer times";
+  }
+}
+
+function updateCountdown(maghrib, fajr) {
+  const now = new Date();
+
+  function toDate(timeStr) {
+    const [h, m] = timeStr.split(":").map(Number);
+    const d = new Date();
+    d.setHours(h, m, 0, 0);
+    return d;
+  }
+
+  const mag = toDate(maghrib);
+  const faj = toDate(fajr);
+
+  let target, type;
+
+  if (now < mag) {
+    target = mag;
+    type = "IFTAAR";
+  } else {
+    target = new Date(faj.getTime() + 86400000); // next day Fajr
+    type = "SUHOOR";
+  }
+
+  const diff = target - now;
+  if (diff < 0) return;
+
+  const h = Math.floor(diff / 3600000).toString().padStart(2, "0");
+  const m = Math.floor((diff % 3600000) / 60000).toString().padStart(2, "0");
+  const s = Math.floor((diff % 60000) / 1000).toString().padStart(2, "0");
+
+  document.getElementById("timer-cd").textContent = `${h}:${m}:${s}`;
+  document.getElementById("timer-type").textContent = type;
+}
+
+function initTimer() {
+  getLocation();
+}
+
+// 🚀 AUTO START TIMER
+window.addEventListener("load", initTimer);
+
+// ==================== QOD ====================
+const QUESTIONS=[
+  {av:'📿',sname:'Sheikh Yusuf',ar:'لِمَاذَا تَصُومُ فِي هَذَا الرَّمَضَان؟',en:'"Why do you fast this Ramadan? What transformation are you seeking within yourself?"'},
+  {av:'📖',sname:'Imam Al-Faruq',ar:'مَا أَعْظَمُ مَا تَعَلَّمْتَهُ مِنَ القُرآنِ الكَرِيم؟',en:'"What is the greatest lesson the Quran has taught you in your life so far?"'},
+  {av:'🌍',sname:'Ustaz Adam',ar:'كَيْفَ تُوَازِنُ بَيْنَ دِينِكَ وَحَيَاتِكَ الْيَوْمِيَّة؟',en:'"How do you balance your faith and your daily modern life? What\'s the hardest part?"'},
+  {av:'📿',sname:'Sheikh Yusuf',ar:'أَيُّ اسْمٍ مِنْ أَسْمَاءِ اللَّهِ الْحُسْنَى يُلَامِسُ قَلْبَكَ؟',en:'"Which of the 99 Names of Allah speaks most deeply to your heart, and why?"'}
+];
+function initQOD(){
+  const idx=new Date().getDate()%QUESTIONS.length;const q=QUESTIONS[idx];
+  document.getElementById('qod-av').textContent=q.av;
+  document.getElementById('qod-sname').textContent=q.sname+' asks:';
+  document.getElementById('qod-ar').textContent=q.ar;
+  document.getElementById('qod-en').textContent=q.en;
+}
+function submitQOD(){
+  const val=document.getElementById('qod-answer').value.trim();if(!val)return;
+  const container=document.getElementById('comm-answers');
+  const div=document.createElement('div');div.className='comm-item';
+  div.innerHTML=`<div class="comm-av">✨</div><div class="comm-body"><div class="comm-name">${username.toUpperCase()} · Just now</div><div class="comm-text">${val}</div><div class="comm-likes">❤️ 0 hearts</div></div>`;
+  container.insertBefore(div,container.firstChild);
+  document.getElementById('qod-answer').value='';
+  addXP(35);showToast('+35 XP — Reflection shared with the community!');
+}
+
+// ==================== AYAH ====================
+async function getAyah(){
+  document.getElementById('ayah-ar').textContent='جَارٍ تَحمِيل...';
+  document.getElementById('ayah-en').textContent='Imam Al-Faruq is selecting your verse...';
+  document.getElementById('ayah-ref').textContent='';
+  document.getElementById('ayah-reflect').style.display='none';
+  const sys=`You are Imam Al-Faruq. Select one powerful Quranic verse relevant to Ramadan and spiritual growth. 
+Respond ONLY with valid JSON (no markdown):
+{"arabic":"<verse in Arabic>","transliteration":"<transliteration>","english":"<English translation>","reference":"Surah Name, Ayah X:XX","reflection":"<A 2-3 sentence spiritual reflection on why this verse is meaningful right now>"}`;
+  try{
+    const raw=await callAI(sys,[{role:'user',content:'Select a Quranic verse for this moment in Ramadan.'}],500);
+    const clean=raw.replace(/```json|```/g,'').trim();
+    const p=JSON.parse(clean);
+    document.getElementById('ayah-ar').textContent=p.arabic;
+    document.getElementById('ayah-ref').textContent=p.reference;
+    document.getElementById('ayah-en').textContent=p.english;
+    const ref=document.getElementById('ayah-reflect');
+    ref.textContent=p.reflection;ref.style.display='block';
+    addXP(20);showToast('+20 XP — Your Ayah has been revealed ✨');
+  }catch(e){document.getElementById('ayah-ar').textContent='⚠️ Error — please try again';document.getElementById('ayah-en').textContent='';}
+}
+
+// ==================== JOURNAL ====================
+function initJournal(){
+  const today=new Date();
+  document.getElementById('j-date').textContent=`📅 ${today.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}`;
+  const strip=document.getElementById('cal-strip');strip.innerHTML='';
+  const days=['S','M','T','W','T','F','S'];
+  for(let i=29;i>=0;i--){
+    const d=new Date(today);d.setDate(d.getDate()-i);
+    const key=`journal_${d.toISOString().split('T')[0]}`;
+    const has=localStorage.getItem(key);
+    const div=document.createElement('div');div.className='cal-day'+(has?' has-entry':'')+(i===0?' today':'');
+    div.innerHTML=`<span class="day-num">${d.getDate()}</span><span>${days[d.getDay()]}</span>`;
+    if(has)div.onclick=()=>loadEntry(d.toISOString().split('T')[0]);
+    strip.appendChild(div);
+  }
+  const todayKey=`journal_${today.toISOString().split('T')[0]}`;
+  const saved=localStorage.getItem(todayKey);
+  if(saved)document.getElementById('j-ta').value=saved;
+  // streak
+  let streak=0;const cur=new Date(today);
+  while(true){const k=`journal_${cur.toISOString().split('T')[0]}`;if(!localStorage.getItem(k))break;streak++;cur.setDate(cur.getDate()-1);}
+  document.getElementById('streak-num').textContent=streak;
+}
+function loadEntry(dateStr){document.getElementById('j-ta').value=localStorage.getItem(`journal_${dateStr}`)||'';}
+function saveJournal(){
+  const val=document.getElementById('j-ta').value.trim();if(!val)return;
+  const key=`journal_${new Date().toISOString().split('T')[0]}`;
+  localStorage.setItem(key,val);initJournal();addXP(50);showToast('+50 XP — Journal entry saved 📓');
+}
+async function aiReflect(){
+  const val=document.getElementById('j-ta').value.trim();if(!val){alert('Write your journal entry first');return;}
+  document.querySelector('.btn-reflect').textContent='✨ Composing reflection...';
+  const box=document.getElementById('reflect-box');box.classList.remove('show');
+  try{
+    const sys=`You are Sheikh Yusuf, Sufi mystic and poet. Read this Ramadan journal entry and write a short poetic reflection (4-6 sentences) using metaphor, Rumi-style language. Be comforting, inspiring, and spiritual.`;
+    const reply=await callAI(sys,[{role:'user',content:val}],350);
+    document.getElementById('reflect-text').textContent=reply;
+    box.classList.add('show');addXP(30);showToast('+30 XP — Sheikh Yusuf shared his reflection 📿');
+  }catch(e){alert('Error — please try again.');}
+  document.querySelector('.btn-reflect').textContent='✨ Get Sheikh Yusuf\'s Reflection';
+}
+
+// ==================== 99 NAMES ====================
+const NAMES99=[
+  ['الرَّحْمَٰن','Ar-Rahman','The Most Gracious'],['الرَّحِيم','Ar-Rahim','The Most Merciful'],['الْمَلِك','Al-Malik','The King'],['الْقُدُّوس','Al-Quddus','The Most Holy'],['السَّلاَم','As-Salam','The Source of Peace'],['الْمُؤْمِن','Al-Mumin','The Guardian of Faith'],['الْمُهَيْمِن','Al-Muhaymin','The Protector'],['الْعَزِيز','Al-Aziz','The Almighty'],['الْجَبَّار','Al-Jabbar','The Compeller'],['الْمُتَكَبِّر','Al-Mutakabbir','The Supreme'],['الْخَالِق','Al-Khaliq','The Creator'],['الْبَارِئ','Al-Bari','The Originator'],['الْمُصَوِّر','Al-Musawwir','The Shaper'],['الْغَفَّار','Al-Ghaffar','The All-Forgiving'],['الْقَهَّار','Al-Qahhar','The Subduer'],['الْوَهَّاب','Al-Wahhab','The Bestower'],['الرَّزَّاق','Ar-Razzaq','The Provider'],['الْفَتَّاح','Al-Fattah','The Opener'],['الْعَلِيم','Al-Alim','The All-Knowing'],['الْقَابِض','Al-Qabid','The Withholder'],['الْبَاسِط','Al-Basit','The Expander'],['الْخَافِض','Al-Khafid','The Abaser'],['الرَّافِع','Ar-Rafi','The Exalter'],['الْمُعِز','Al-Muizz','The Honourer'],['الْمُذِل','Al-Mudhill','The Humiliator'],['السَّمِيع','As-Sami','The All-Hearing'],['الْبَصِير','Al-Basir','The All-Seeing'],['الْحَكَم','Al-Hakam','The Judge'],['الْعَدْل','Al-Adl','The Just'],['اللَّطِيف','Al-Latif','The Subtle One'],['الْخَبِير','Al-Khabir','The All-Aware'],['الْحَلِيم','Al-Halim','The Forbearing'],['الْعَظِيم','Al-Azim','The Magnificent'],['الْغَفُور','Al-Ghafur','The Forgiving'],['الشَّكُور','Ash-Shakur','The Grateful'],['الْعَلِيّ','Al-Ali','The Most High'],['الْكَبِير','Al-Kabir','The Grand'],['الْحَفِيظ','Al-Hafiz','The Preserver'],['الْمُقِيت','Al-Muqit','The Sustainer'],['الْحَسِيب','Al-Hasib','The Reckoner'],['الْجَلِيل','Al-Jalil','The Majestic'],['الْكَرِيم','Al-Karim','The Generous'],['الرَّقِيب','Ar-Raqib','The Watchful'],['الْمُجِيب','Al-Mujib','The Responsive'],['الْوَاسِع','Al-Wasi','The All-Encompassing'],['الْحَكِيم','Al-Hakim','The Wise'],['الْوَدُود','Al-Wadud','The Loving'],['الْمَجِيد','Al-Majid','The Glorious'],['الْبَاعِث','Al-Baith','The Resurrector'],['الشَّهِيد','Ash-Shahid','The Witness'],['الْحَق','Al-Haqq','The Truth'],['الْوَكِيل','Al-Wakil','The Trustee'],['الْقَوِيّ','Al-Qawwiy','The Powerful'],['الْمَتِين','Al-Matin','The Firm'],['الْوَلِيّ','Al-Waliyy','The Protecting Friend'],['الْحَمِيد','Al-Hamid','The Praiseworthy'],['الْمُحْصِي','Al-Muhsi','The Reckoner'],['الْمُبْدِئ','Al-Mubdi','The Originator'],['الْمُعِيد','Al-Muid','The Restorer'],['الْمُحْيِي','Al-Muhyi','The Giver of Life'],['الْمُمِيت','Al-Mumit','The Taker of Life'],['الْحَيّ','Al-Hayy','The Ever-Living'],['الْقَيُّوم','Al-Qayyum','The Self-Subsisting'],['الْوَاجِد','Al-Wajid','The Finder'],['الْمَاجِد','Al-Majid','The Noble'],['الْوَاحِد','Al-Wahid','The Unique'],['الصَّمَد','As-Samad','The Eternal Refuge'],['الْقَادِر','Al-Qadir','The Capable'],['الْمُقْتَدِر','Al-Muqtadir','The Omnipotent'],['الْمُقَدِّم','Al-Muqaddim','The Expeditor'],['الْمُؤَخِّر','Al-Muakhkhir','The Delayer'],['الأَوَّل','Al-Awwal','The First'],['الآخِر','Al-Akhir','The Last'],['الظَّاهِر','Az-Zahir','The Manifest'],['الْبَاطِن','Al-Batin','The Hidden'],['الْوَالِي','Al-Wali','The Governor'],['الْمُتَعَالِي','Al-Mutaali','The Self Exalted'],['الْبَرّ','Al-Barr','The Source of Goodness'],['التَّوَّاب','At-Tawwab','The Acceptor of Repentance'],['الْمُنْتَقِم','Al-Muntaqim','The Avenger'],['الْعَفُوّ','Al-Afuww','The Pardoner'],['الرَّؤُوف','Ar-Rauf','The Kind'],['مَالِكُ الْمُلْك','Malik-ul-Mulk','Owner of Sovereignty'],['ذُو الْجَلاَلِ وَالإِكْرَام','Dhul-Jalali-Wal-Ikram','Lord of Majesty'],['الْمُقْسِط','Al-Muqsit','The Equitable'],['الْجَامِع','Al-Jami','The Gatherer'],['الْغَنِيّ','Al-Ghani','The Self-Sufficient'],['الْمُغْنِي','Al-Mughni','The Enricher'],['الْمَانِع','Al-Mani','The Preventer'],['الضَّارّ','Ad-Darr','The Distresser'],['النَّافِع','An-Nafi','The Propitious'],['النُّور','An-Nur','The Light'],['الْهَادِي','Al-Hadi','The Guide'],['الْبَدِيع','Al-Badi','The Originator'],['الْبَاقِي','Al-Baqi','The Everlasting'],['الْوَارِث','Al-Warith','The Inheritor'],['الرَّشِيد','Ar-Rashid','The Guide to Right Path'],['الصَّبُور','As-Sabur','The Patient One']
+];
+let namesBuilt=false;
+function buildNames(){
+  if(namesBuilt)return;namesBuilt=true;
+  const grid=document.getElementById('names-grid');
+  NAMES99.forEach(([ar,latin,en],i)=>{
+    const div=document.createElement('div');div.className='name-card';
+    div.innerHTML=`<div class="name-num">${String(i+1).padStart(2,'0')}</div><div class="name-ar">${ar}</div><div class="name-en">${en}</div>`;
+    div.onclick=()=>openName(ar,latin,en);
+    grid.appendChild(div);
+  });
+}
+async function openName(ar,latin,en){
+  document.getElementById('nm-ar').textContent=ar;
+  document.getElementById('nm-latin').textContent=latin;
+  document.getElementById('nm-meaning').textContent=en;
+  document.getElementById('nm-ai').className='name-modal-ai';
+  document.getElementById('nm-ai').textContent='';
+  document.getElementById('name-modal').classList.add('show');
+  try{
+    const sys=`You are Imam Al-Faruq. Explain the deep spiritual meaning of the divine Name "${latin}" (${ar}) — how it appears in Quran, what it means for a believer's life, and how to reflect on it during Ramadan. Be poetic but concise — 3-4 sentences.`;
+    const reply=await callAI(sys,[{role:'user',content:`Explain the name ${latin}`}],300);
+    document.getElementById('nm-ai').textContent=reply;
+    document.getElementById('nm-ai').classList.add('show');
+    addXP(10);
+  }catch(e){}
+}
+function closeNameModal(){document.getElementById('name-modal').classList.remove('show');}
+
+// ==================== ISNAD ====================
+async function genIsnad(){
+  const hadith=document.getElementById('isnad-in').value.trim();if(!hadith)return;
+  document.querySelector('.btn-isnad').textContent='🔗 Building chain...';
+  const sys=`You are Imam Al-Faruq. For the given hadith, create an isnad (chain of narrators) from Prophet Muhammad ﷺ down to the compiler. 
+Respond ONLY with valid JSON (no markdown):
+{"title":"<short hadith title>","chain":[{"arabic":"<name in Arabic>","english":"<name in English>","era":"<e.g. Prophet of Allah, d. 632 CE>"},...]}`  ;
+  try{
+    const raw=await callAI(sys,[{role:'user',content:hadith}],500);
+    const clean=raw.replace(/```json|```/g,'').trim();
+    const p=JSON.parse(clean);
+    const flow=document.getElementById('chain-flow');flow.innerHTML='';
+    document.querySelector('.chain-title').textContent=`✦ ${p.title} ✦`;
+    p.chain.forEach((node,i)=>{
+      const div=document.createElement('div');div.className='chain-node';
+      div.innerHTML=`<div class="chain-node-ar">${node.arabic}</div><div class="chain-node-en">${node.english}</div><div class="chain-node-era">${node.era}</div>`;
+      flow.appendChild(div);
+      if(i<p.chain.length-1){const arr=document.createElement('div');arr.className='chain-arrow';arr.textContent='↓';flow.appendChild(arr);}
+    });
+    document.getElementById('isnad-viz').classList.add('show');addXP(45);showToast('+45 XP — Isnad chain visualized 🔗');
+  }catch(e){alert('Could not generate chain. Try again.');}
+  document.querySelector('.btn-isnad').textContent='🔗  Visualize Isnad Chain';
+}
+
+// ==================== XP ====================
+function addXP(amt){
+  XP+=amt;
+  let lvl=LEVELS[0];for(const l of LEVELS)if(XP>=l.m)lvl=l;
+  const idx=LEVELS.indexOf(lvl);const next=LEVELS[idx+1];
+  const pct=next?Math.min(100,((XP-lvl.m)/(next.m-lvl.m))*100):100;
+  document.getElementById('xp-fill').style.width=pct+'%';
+  document.getElementById('lvl-badge').textContent=lvl.n;
+}
+function showToast(msg){
+  const t=document.createElement('div');t.className='toast';t.textContent=msg;
+  document.body.appendChild(t);setTimeout(()=>t.remove(),3200);
+}
+function doCopy(txt,id){
+  navigator.clipboard.writeText(txt).then(()=>{
+    const b=document.getElementById(id);b.textContent='✓';b.classList.add('ok');
+    setTimeout(()=>{b.textContent='Copy';b.classList.remove('ok');},2000);
+  });
+}
+</script>
 </body>
 </html>
