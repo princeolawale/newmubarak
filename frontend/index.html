@@ -796,59 +796,25 @@ function showSec(id){
 }
 
 // ==================== AI HELPER ====================
-async function callAI(system, messages, maxTokens=900){
-  // FRONTEND STUB — backend will replace this with real API call
-  await new Promise(r=>setTimeout(r,1200));
-  const last = messages[messages.length-1]?.content||'';
-  const isQuran = system.includes('Imam');
-  const isSufi = system.includes('Sheikh Yusuf');
-  const isModern = system.includes('Ustaz Adam');
-  const isDua = system.includes('personal dua');
-  const isAyah = system.includes('Quranic verse');
-  const isReflect = system.includes('journal');
-  const isName = system.includes('divine Name');
-  const isIsnad = system.includes('isnad');
-  const isBattle = system.includes('3-4 sentences');
-
-  if(isDua) return JSON.stringify({
-    arabic:"اللَّهُمَّ إِنِّي أَسْأَلُكَ الْهُدَى وَالتُّقَى وَالْعَفَافَ وَالْغِنَى",
-    transliteration:"Allahumma inni as'aluka al-huda wat-tuqa wal-'afafa wal-ghina",
-    meaning:"O Allah, I ask You for guidance, piety, chastity and self-sufficiency. This dua asks Allah for everything the heart truly needs — direction, righteousness, and peace."
+async function callAI(system, messages, maxTokens = 900) {
+  const response = await fetch("https://newmubarak.onrender.com/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      system,
+      messages,
+      max_tokens: maxTokens
+    })
   });
 
-  if(isAyah) return JSON.stringify({
-    arabic:"وَإِذَا سَأَلَكَ عِبَادِي عَنِّي فَإِنِّي قَرِيبٌ",
-    transliteration:"Wa idha sa'alaka 'ibadi 'anni fa-inni qarib",
-    english:"And when My servants ask you about Me — I am indeed near.",
-    reference:"Al-Baqarah, Ayah 2:186",
-    reflection:"This verse is a direct promise from Allah — He does not say 'tell them I am near', He says 'I am near' Himself. In Ramadan, the veil between du'a and answer grows thin. Speak to Him as if He is listening. Because He is."
-  });
+  const data = await response.json();
 
-  if(isIsnad) return JSON.stringify({
-    title:"Actions are judged by intentions",
-    chain:[
-      {arabic:"النَّبِيُّ مُحَمَّدٌ ﷺ",english:"Prophet Muhammad ﷺ",era:"Prophet of Allah, d. 632 CE"},
-      {arabic:"عُمَرُ بْنُ الْخَطَّاب",english:"Umar ibn al-Khattab",era:"Companion, d. 644 CE"},
-      {arabic:"عَلْقَمَةُ بْنُ وَقَّاص",english:"Alqama ibn Waqqas",era:"Successor, d. 690 CE"},
-      {arabic:"مُحَمَّدُ بْنُ إِبْرَاهِيم",english:"Muhammad ibn Ibrahim",era:"Scholar, d. 723 CE"},
-      {arabic:"يَحْيَى بْنُ سَعِيد",english:"Yahya ibn Sa'id",era:"Hadith master, d. 760 CE"},
-      {arabic:"الإِمَامُ الْبُخَارِي",english:"Imam Al-Bukhari",era:"Compiled in Sahih al-Bukhari, d. 870 CE"}
-    ]
-  });
+  if (!response.ok) {
+    throw new Error(data.error || "API error");
+  }
 
-  if(isName) return "This blessed Name appears in the opening of every surah, reminding the believer that Allah's mercy precedes His might. To reflect on this Name daily — especially in Ramadan — is to unlock a door of rahma that never closes. Let it be on your tongue at the start of every action, every meal broken at Iftaar, every prayer offered in the night.";
-
-  if(isReflect) return "*The one who fasts carries a lantern inside them that others cannot see, but those nearby feel its warmth.* Your words today are seeds planted in the soil of this holy month — Sheikh Yusuf sees sincerity in every line. Even in struggle, you showed up. That itself is ibadah.";
-
-  if(isBattle||isSufi) return "*Rumi once wrote: 'Silence is the ocean, speech is the river' — and yet in Ramadan even silence speaks.* The fast strips away the noise of the world until only the sound of your own heart remains. That heartbeat is your dhikr, your zikr, your continuous remembrance of the One who gave it to you.";
-
-  if(isModern) return `Honestly bro, that's such a real question and I respect you for asking it. Here's the thing — Islam doesn't ask you to be perfect, it asks you to be *present*. The Prophet ﷺ said the most beloved deeds to Allah are the most consistent ones, even if they're small. Start with one thing this Ramadan. Just one. Build from there. Allah sees effort, not just results.`;
-
-  return `Bismillahir Rahmanir Rahim. As-salamu alaykum dear seeker 🌙
-
-JazakAllah khayran for your question. The Quran reminds us in Surah Al-Baqarah (2:186): *"And when My servants ask you about Me — I am indeed near."*
-
-This month of Ramadan is a gift — 30 days in which the gates of mercy are opened wide. Whatever you seek, bring it to Allah in these blessed nights. He is closer than you imagine.`;
+  // backend returns { reply: "text" }
+  return data.reply;
 }
 
 // ==================== SCHOLARS CHAT ====================

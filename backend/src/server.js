@@ -11,44 +11,41 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 5050;
 
-/* ================= OPENAI CLIENT ================= */
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: process.env.OPENAI_API_KEY
 });
 
-/* ================= HEALTH CHECK ================= */
+/* ===== HEALTH ===== */
 app.get("/", (req, res) => {
-  res.send("🌙 Mubarak backend is live");
+  res.send("Mubarak backend is live 🌙");
 });
 
-/* ================= CHAT ENDPOINT ================= */
+/* ===== CHAT ===== */
 app.post("/chat", async (req, res) => {
   try {
-    const { message, system } = req.body;
-
-    if (!message) {
-      return res.status(400).json({ error: "Message is required" });
-    }
+    const { system, messages, max_tokens } = req.body;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       temperature: 0.7,
+      max_tokens: max_tokens || 900,
       messages: [
-        ...(system ? [{ role: "system", content: system }] : []),
-        { role: "user", content: message },
-      ],
+        { role: "system", content: system },
+        ...messages
+      ]
     });
 
-    const reply = completion.choices[0].message.content;
+    res.json({
+      reply: completion.choices[0].message.content
+    });
 
-    res.json({ reply });
-  } catch (error) {
-    console.error("OpenAI error:", error.message);
+  } catch (err) {
+    console.error("AI error:", err.message);
     res.status(500).json({ error: "AI request failed" });
   }
 });
 
-/* ================= START SERVER ================= */
+/* ===== START ===== */
 app.listen(PORT, () => {
-  console.log(`🚀 Mubarak API running on port ${PORT}`);
+  console.log(`Mubarak API running on port ${PORT}`);
 });
