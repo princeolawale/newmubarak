@@ -777,7 +777,7 @@ function toP2(){
   document.getElementById('p2').style.display='block';
   document.getElementById('top-uname').textContent=username;
   document.getElementById('sb-uname').textContent=username;
-  initJournal();initQOD();initTimer();
+  initJournal();initQOD();fetchPrayers(21.3891, 39.8579, true);
 }
 
 // ==================== NAVIGATION ====================
@@ -1027,7 +1027,6 @@ function updateCountdown(maghrib, fajr) {
 }
 
 // 🚀 AUTO START TIMER
-window.addEventListener("load", initTimer);
 
 // ==================== QOD ====================
 const QUESTIONS=[
