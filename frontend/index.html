@@ -1132,22 +1132,42 @@ function buildNames(){
     grid.appendChild(div);
   });
 }
-async function openName(ar,latin,en){
-  document.getElementById('nm-ar').textContent=ar;
-  document.getElementById('nm-latin').textContent=latin;
-  document.getElementById('nm-meaning').textContent=en;
-  document.getElementById('nm-ai').className='name-modal-ai';
-  document.getElementById('nm-ai').textContent='';
+async function openName(ar, latin, en) {
+  document.getElementById('nm-ar').textContent = ar;
+  document.getElementById('nm-latin').textContent = latin;
+  document.getElementById('nm-meaning').textContent = en;
+
+  const aiBox = document.getElementById('nm-ai');
+  aiBox.className = 'name-modal-ai';
+  aiBox.textContent = 'Loading reflection…';
+
   document.getElementById('name-modal').classList.add('show');
-  try{
-    const sys=`You are Imam Al-Faruq. Explain the deep spiritual meaning of the divine Name "${latin}" (${ar}) — how it appears in Quran, what it means for a believer's life, and how to reflect on it during Ramadan. Be poetic but concise — 3-4 sentences.`;
-    const reply=await callAI(sys,[{role:'user',content:`Explain the name ${latin}`}],300);
-    document.getElementById('nm-ai').textContent=reply;
-    document.getElementById('nm-ai').classList.add('show');
+
+  try {
+    const sys = `You are Imam Al-Faruq. Explain the deep spiritual meaning of the divine Name "${latin}" (${ar}) — how it appears in Quran, what it means for a believer's life, and how to reflect on it during Ramadan. Be poetic but concise — 3-4 sentences.`;
+
+    const reply = await callAI(
+      sys,
+      [{ role: 'user', content: `Explain the name ${latin}` }],
+      300
+    );
+
+    aiBox.textContent = reply;
+    aiBox.classList.add('show');
     addXP(10);
-  }catch(e){}
+
+  } catch (e) {
+    console.error('99 Names error:', e);
+
+    aiBox.textContent =
+      '⚠️ Could not load explanation. Please check connection or backend.';
+    aiBox.classList.add('show');
+  }
 }
-function closeNameModal(){document.getElementById('name-modal').classList.remove('show');}
+
+function closeNameModal() {
+  document.getElementById('name-modal').classList.remove('show');
+}
 
 // ==================== ISNAD ====================
 async function genIsnad(){
