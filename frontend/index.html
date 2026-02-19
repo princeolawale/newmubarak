@@ -901,69 +901,73 @@ Respond ONLY with valid JSON (no markdown):
 let timerInterval = null;
 let prayerTimes = {};
 
+// Load Mecca by default on page open
+window.addEventListener("load", () => {
+  fetchPrayers(21.3891, 39.8579, true);
+});
+
+// Button click → ask for real location
 function getLocation() {
   if (!navigator.geolocation) {
-    document.getElementById("timer-lbl").textContent = "Geolocation not available";
+    document.getElementById("timer-lbl").textContent =
+      "Geolocation not supported";
     return;
   }
 
-  document.getElementById("timer-lbl").textContent = "Getting your location...";
+  document.getElementById("timer-lbl").textContent =
+    "Requesting your location…";
 
   navigator.geolocation.getCurrentPosition(
-    pos => fetchPrayers(pos.coords.latitude, pos.coords.longitude),
+    pos => fetchPrayers(pos.coords.latitude, pos.coords.longitude, false),
     () => {
       document.getElementById("timer-lbl").textContent =
-        "Location denied — using Mecca defaults";
-      fetchPrayers(21.3891, 39.8579);
+        "Location denied — showing Mecca time";
     }
   );
 }
 
-async function fetchPrayers(lat, lng) {
-  document.getElementById("timer-lbl").textContent = "Loading prayer times...";
+async function fetchPrayers(lat, lng, isDefault = false) {
+  document.getElementById("timer-lbl").textContent = "Loading prayer times…";
 
   try {
     const today = new Date();
-    const m = today.getMonth() + 1;
-    const d = today.getDate();
-    const y = today.getFullYear();
+    const url = `https://api.aladhan.com/v1/timings/${today.getDate()}-${
+      today.getMonth() + 1
+    }-${today.getFullYear()}?latitude=${lat}&longitude=${lng}&method=2`;
 
-    const url = `https://api.aladhan.com/v1/timings/${d}-${m}-${y}?latitude=${lat}&longitude=${lng}&method=2`;
-
-    const res = await fetch(url);
-    const data = await res.json();
+    const r = await fetch(url);
+    const data = await r.json();
     const t = data.data.timings;
 
-    // Clean time strings like "18:42 (+01)"
-    const clean = str => str.split(" ")[0];
-
     prayerTimes = {
-      fajr: clean(t.Fajr),
-      sunrise: clean(t.Sunrise),
-      dhuhr: clean(t.Dhuhr),
-      asr: clean(t.Asr),
-      maghrib: clean(t.Maghrib),
-      isha: clean(t.Isha)
+      fajr: t.Fajr,
+      sunrise: t.Sunrise,
+      dhuhr: t.Dhuhr,
+      asr: t.Asr,
+      maghrib: t.Maghrib,
+      isha: t.Isha
     };
 
-    document.getElementById("t-fajr").textContent = prayerTimes.fajr;
-    document.getElementById("t-sunrise").textContent = prayerTimes.sunrise;
-    document.getElementById("t-dhuhr").textContent = prayerTimes.dhuhr;
-    document.getElementById("t-maghrib").textContent = prayerTimes.maghrib;
+    document.getElementById("t-fajr").textContent = t.Fajr;
+    document.getElementById("t-sunrise").textContent = t.Sunrise;
+    document.getElementById("t-dhuhr").textContent = t.Dhuhr;
+    document.getElementById("t-maghrib").textContent = t.Maghrib;
 
     if (timerInterval) clearInterval(timerInterval);
-
     timerInterval = setInterval(
-      () => updateCountdown(prayerTimes.maghrib, prayerTimes.fajr),
+      () => updateCountdown(t.Maghrib, t.Fajr),
       1000
     );
+    updateCountdown(t.Maghrib, t.Fajr);
 
-    updateCountdown(prayerTimes.maghrib, prayerTimes.fajr);
+    const tz = data.data.meta.timezone;
 
-    document.getElementById("timer-lbl").textContent = data.data.meta.timezone;
-  } catch (e) {
-    console.error(e);
-    document.getElementById("timer-lbl").textContent = "Could not load prayer times";
+    document.getElementById("timer-lbl").textContent = isDefault
+      ? `Mecca time • ${tz}`
+      : `Your location • ${tz}`;
+  } catch {
+    document.getElementById("timer-lbl").textContent =
+      "Could not load prayer times";
   }
 }
 
@@ -971,9 +975,9 @@ function updateCountdown(maghrib, fajr) {
   const now = new Date();
 
   function toDate(timeStr) {
-    const [h, m] = timeStr.split(":").map(Number);
+    const [h, m] = timeStr.split(":");
     const d = new Date();
-    d.setHours(h, m, 0, 0);
+    d.setHours(parseInt(h), parseInt(m), 0, 0);
     return d;
   }
 
@@ -986,7 +990,7 @@ function updateCountdown(maghrib, fajr) {
     target = mag;
     type = "IFTAAR";
   } else {
-    target = new Date(faj.getTime() + 86400000); // next day Fajr
+    target = new Date(faj.getTime() + 86400000);
     type = "SUHOOR";
   }
 
@@ -999,10 +1003,6 @@ function updateCountdown(maghrib, fajr) {
 
   document.getElementById("timer-cd").textContent = `${h}:${m}:${s}`;
   document.getElementById("timer-type").textContent = type;
-}
-
-function initTimer() {
-  getLocation();
 }
 
 // 🚀 AUTO START TIMER
