@@ -690,18 +690,67 @@ function drStars(){SCX.clearRect(0,0,SC.width,SC.height);ST.forEach(s=>{s.o+=s.s
 rsz();mkStars();drStars();addEventListener('resize',()=>{rsz();mkStars();});
 
 // ==================== STATE ====================
-let username='', XP=0, chatH=[], curScholar=null, battleDone=false;
-const LEVELS=[{n:'Novice',m:0},{n:'Seeker',m:100},{n:'Student',m:300},{n:'Scholar',m:700},{n:'Alim',m:1200},{n:'Sheikh',m:2000}];
-const SCHOLARS={
-  q:{name:'Imam Al-Faruq',ar:'الإمام الفاروق',av:'📖',cls:'q',
-    sys:`You are Imam Al-Faruq, an Islamic scholar specializing in Quranic tafsir and hadith sciences. Be measured, precise, warm. ALWAYS cite specific Quranic verses (surah name + ayah number). Include Arabic text when quoting Quran. You speak during Ramadan 1446. Start first message with Islamic greeting.`,
-    quick:['What does Quran say about Ramadan?','Explain Surah Al-Fatiha','What is Laylat al-Qadr?','Best duas for Ramadan?','What is tafsir?']},
-  s:{name:'Sheikh Yusuf',ar:'الشيخ يوسف',av:'📿',cls:'s',
-    sys:`You are Sheikh Yusuf, a Sufi mystic. Speak through metaphor, poetry, and Rumi-inspired wisdom. Every answer should contain a poetic element. Explore Islam as a path of the heart. You speak during Ramadan 1446.`,
-    quick:['Spiritual meaning of fasting?','What is dhikr?','How to purify the heart?','What is tasawwuf?','Love of Allah — what does it mean?']},
-  m:{name:'Ustaz Adam',ar:'الأستاذ آدم',av:'🌍',cls:'m',
-    sys:`You are Ustaz Adam, a young modern Muslim scholar. Speak casually, relatable, like a knowledgeable friend. Address modern life: halal food, work, mental health, relationships — through an Islamic lens. You're excited about Ramadan 2025.`,
-    quick:['Staying productive while fasting?','Is music haram?','Halal dating — real talk?','Dealing with Ramadan pressure?','Work-life balance in Ramadan?']}
+let username = '';
+let XP = 0;
+let chatH = [];
+let curScholar = null;
+let battleDone = false;
+let namesBuilt = false;   // ← REQUIRED to fix 99 Names crash
+
+const LEVELS = [
+  { n: 'Novice', m: 0 },
+  { n: 'Seeker', m: 100 },
+  { n: 'Student', m: 300 },
+  { n: 'Scholar', m: 700 },
+  { n: 'Alim', m: 1200 },
+  { n: 'Sheikh', m: 2000 }
+];
+
+const SCHOLARS = {
+  q: {
+    name: 'Imam Al-Faruq',
+    ar: 'الإمام الفاروق',
+    av: '📖',
+    cls: 'q',
+    sys: `You are Imam Al-Faruq, an Islamic scholar specializing in Quranic tafsir and hadith sciences. Be measured, precise, warm. ALWAYS cite specific Quranic verses (surah name + ayah number). Include Arabic text when quoting Quran. You speak during Ramadan 1446. Start first message with Islamic greeting.`,
+    quick: [
+      'What does Quran say about Ramadan?',
+      'Explain Surah Al-Fatiha',
+      'What is Laylat al-Qadr?',
+      'Best duas for Ramadan?',
+      'What is tafsir?'
+    ]
+  },
+
+  s: {
+    name: 'Sheikh Yusuf',
+    ar: 'الشيخ يوسف',
+    av: '📿',
+    cls: 's',
+    sys: `You are Sheikh Yusuf, a Sufi mystic. Speak through metaphor, poetry, and Rumi-inspired wisdom. Every answer should contain a poetic element. Explore Islam as a path of the heart. You speak during Ramadan 1446.`,
+    quick: [
+      'Spiritual meaning of fasting?',
+      'What is dhikr?',
+      'How to purify the heart?',
+      'What is tasawwuf?',
+      'Love of Allah — what does it mean?'
+    ]
+  },
+
+  m: {
+    name: 'Ustaz Adam',
+    ar: 'الأستاذ آدم',
+    av: '🌍',
+    cls: 'm',
+    sys: `You are Ustaz Adam, a young modern Muslim scholar. Speak casually, relatable, like a knowledgeable friend. Address modern life: halal food, work, mental health, relationships — through an Islamic lens. You're excited about Ramadan 2025.`,
+    quick: [
+      'Staying productive while fasting?',
+      'Is music haram?',
+      'Halal dating — real talk?',
+      'Dealing with Ramadan pressure?',
+      'Work-life balance in Ramadan?'
+    ]
+  }
 };
 
 // ==================== PAGE 1 ====================
@@ -735,9 +784,17 @@ function toP2(){
 function showSec(id){
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.sb-btn').forEach(b=>b.classList.remove('active'));
-  document.getElementById('sec-'+id).classList.add('active');
-  document.getElementById('sb-'+id).classList.add('active');
-  if(id==='names')buildNames();
+
+  const sec = document.getElementById('sec-'+id);
+  const btn = document.getElementById('sb-'+id);
+
+  if(sec) sec.classList.add('active');
+  if(btn) btn.classList.add('active');
+
+  // Ensure 99 Names always loads when section opens
+  if(id === 'names' && !namesBuilt){
+    buildNames();
+  }
 }
 
 // ==================== AI HELPER ====================
