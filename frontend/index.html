@@ -344,6 +344,36 @@ body{background:var(--bg);color:var(--cream);font-family:'Outfit',sans-serif;fon
 .toast{position:fixed;top:76px;right:20px;z-index:9999;background:linear-gradient(135deg,rgba(26,107,70,0.97),rgba(7,14,22,0.97));border:1px solid rgba(46,204,113,0.45);border-radius:14px;padding:12px 22px;color:#2ecc71;font-size:13px;pointer-events:none;animation:toastIn 0.3s ease,toastOut 0.3s 2.6s ease forwards;}
 @keyframes toastIn{from{opacity:0;transform:translateX(110%);}to{opacity:1;transform:translateX(0);}}
 @keyframes toastOut{to{opacity:0;}}
+.landing-ca {
+  margin-top: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 15px;
+  letter-spacing: 0.5px;
+}
+
+.ca-display {
+  color: #C9A84C;
+  font-weight: 600;
+}
+
+.ca-copy {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  color: #C9A84C;
+  padding: 4px 6px;
+  transition: 0.2s ease;
+}
+
+.ca-copy:hover {
+  transform: scale(1.15);
+  opacity: 0.8;
+}
 </style>
 </head>
 <body>
@@ -395,15 +425,9 @@ body{background:var(--bg);color:var(--cream);font-family:'Outfit',sans-serif;fon
       <button class="btn-main" onclick="onEnter()">ENTER THE CIRCLE &nbsp;·&nbsp; ادخل</button>
 
       <div class="landing-ca">
-        <span class="ca-label">CA:</span>
-        <span id="token-ca-full" class="ca-text">
-          7GhT92xxxxxxxxxxxxxxxxxxxxpump
-        </span>
-        <span class="ca-short">
-          7GhT92...pump
-        </span>
-        <button class="ca-copy" onclick="copyLandingCA()">📋</button>
-      </div>
+        <span class="ca-display">CA: 7GhT92...pump</span>
+        <button class="ca-copy" onclick="copyCA()">📋</button>
+      </div>      
       
     </div>
   </div>
@@ -1223,11 +1247,10 @@ function doCopy(txt,id){
     setTimeout(()=>{b.textContent='Copy';b.classList.remove('ok');},2000);
   });
 }
-function copyLandingCA() {
-  const fullCA = document.getElementById("token-ca-full").textContent;
-
+function copyCA() {
+  const fullCA = "7GhT92xxxxxxxxxxxxxxxxxxxxpump"; // put full CA here
   navigator.clipboard.writeText(fullCA).then(() => {
-    showToast("CA copied to clipboard 🚀");
+    showToast("CA copied 🚀");
   });
 }
 </script>
